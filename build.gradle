@@ -12,8 +12,16 @@ repositories {
 	mavenCentral()
 }
 
-dependencies {
+processResources {
+	dependsOn 'copyFrontEndToBuild'
+}
 
+task copyFrontEndToBuild(type: Copy) {
+	from "$projectDir/src/VueJS/dist/"
+	into "$buildDir/resources/main/static"
+}
+
+dependencies {
 	implementation 'org.xerial:sqlite-jdbc:3.32.3.2'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -22,6 +30,4 @@ dependencies {
 	}
 }
 
-test {
-	useJUnitPlatform()
-}
+

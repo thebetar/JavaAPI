@@ -4,6 +4,7 @@ import com.example.demo.model.Blog;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,8 @@ public class BlogDataAccessService implements BlogDao {
     public static final String COLUMN_BLOG_ID = "_id";
     public static final String COLUMN_BLOG_TITLE = "title";
     public static final String COLUMN_BLOG_DESC = "description";
+    public static final String COLUMN_BLOG_DATE = "date";
+    public static final String COLUMN_BLOG_CATEGORY = "category";
 
     public static final String QUERY_BLOGS = "SELECT * FROM " + TABLE_BLOGS;
     public static final String QUERY_BLOG_BY_ID = "SELECT * FROM " + TABLE_BLOGS +
@@ -27,11 +30,15 @@ public class BlogDataAccessService implements BlogDao {
     public static final String CREATE_BLOG = "INSERT INTO " + TABLE_BLOGS + " (" +
             COLUMN_BLOG_ID + ", " +
             COLUMN_BLOG_TITLE + ", " +
-            COLUMN_BLOG_DESC + ") VALUES (?, ?, ?)";
+            COLUMN_BLOG_DESC + ", " +
+            COLUMN_BLOG_CATEGORY + ", " +
+            COLUMN_BLOG_DATE + ") VALUES (?, ?, ?, ?, ?)";
     public static final String DELETE_BLOG = "DELETE FROM " + TABLE_BLOGS +
             " WHERE " + COLUMN_BLOG_ID + " = ?";
-    public static final String UPDATE_BLOG = "UPDATE " + TABLE_BLOGS +
-            " SET " + COLUMN_BLOG_TITLE + " = ?, " + COLUMN_BLOG_DESC + " = ?" +
+    public static final String UPDATE_BLOG = "UPDATE " + TABLE_BLOGS + " SET " +
+            COLUMN_BLOG_TITLE + " = ?, " +
+            COLUMN_BLOG_DESC + " = ?, " +
+            COLUMN_BLOG_DATE + " = ?" +
             " WHERE " + COLUMN_BLOG_ID + " = ?";
 
     private Connection conn;
@@ -105,16 +112,19 @@ public class BlogDataAccessService implements BlogDao {
     }
 
     @Override
-    public int insertBlog(UUID id, Blog blog) {
+    public int insertBlog(UUID id, LocalDate date, Blog blog) {
         Blog checkBlog = selectBlogByTitle(blog.getTitle());
-        if(checkBlog == null) {
-            System.out.println("User already exists");
+        if(checkBlog != null) {
+            System.out.println(checkBlog.getTitle());
+            System.out.println("Blog title already taken!");
             return 0;
         }
         try {
             insertBlog.setString(1, id.toString());
             insertBlog.setString(2, blog.getTitle());
             insertBlog.setString(3, blog.getDescription());
+            insertBlog.setString(4, blog.getCategory());
+            insertBlog.setString(5, date.toString());
 
             int affectedRows = insertBlog.executeUpdate();
 
@@ -140,7 +150,9 @@ public class BlogDataAccessService implements BlogDao {
                 Blog blog = new Blog(
                         UUID.fromString(results.getString(1)),
                         results.getString(2),
-                        results.getString(3)
+                        results.getString(3),
+                        results.getString(5), // Is being parsed a little wrong, because category got added alter
+                        LocalDate.parse(results.getString(4))
                 );
                 blogs.add(blog);
             }
@@ -162,7 +174,7 @@ public class BlogDataAccessService implements BlogDao {
 
             results.next();
 
-            Blog blog = new Blog(UUID.fromString(results.getString(1)), results.getString(2), results.getString(3));
+            Blog blog = new Blog(UUID.fromString(results.getString(1)), results.getString(2), results.getString(3), results.getString(5), LocalDate.parse(results.getString(4)));
 
             return blog;
         } catch(SQLException e) {
@@ -177,10 +189,10 @@ public class BlogDataAccessService implements BlogDao {
     public Blog selectBlogByTitle(String title) {
         try {
             queryBlogByTitle.setString(1, title);
-            ResultSet results = queryBlogById.executeQuery();
+            ResultSet results = queryBlogByTitle.executeQuery();
 
             while(results.next()) {
-                Blog blog = new Blog(UUID.fromString(results.getString(1)), results.getString(2), results.getString(3));
+                Blog blog = new Blog(UUID.fromString(results.getString(1)), results.getString(2), results.getString(3), results.getString(5), LocalDate.parse(results.getString(4)));
 
                 return blog;
             }
@@ -220,7 +232,8 @@ public class BlogDataAccessService implements BlogDao {
 
                 updateBlog.setString(1, blog.getTitle());
                 updateBlog.setString(2, blog.getDescription());
-                updateBlog.setString(3, id.toString());
+                updateBlog.setString(3, blog.getDate().toString());
+                updateBlog.setString(4, id.toString());
 
                 int affectedRecords = updateBlog.executeUpdate();
 
